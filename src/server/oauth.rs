@@ -319,11 +319,11 @@ fn escape(text: &str) -> String {
 fn page(status: StatusCode, body: &str) -> Response {
     let html = format!(
         "<!doctype html><html><head><meta charset=\"utf-8\">\
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-         <title>Mind login</title><style>body{{font-family:system-ui,sans-serif;\
-         max-width:24rem;margin:4rem auto;padding:0 1rem}}input,button{{font:inherit;\
-         width:100%;padding:.5rem;margin:.25rem 0;box-sizing:border-box}}\
-         .error{{color:#b00020}}</style></head><body>{body}</body></html>"
+        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
+        <title>Mind login</title><style>body{{font-family:system-ui,sans-serif;\
+        max-width:24rem;margin:4rem auto;padding:0 1rem}}input,button{{font:inherit;\
+        width:100%;padding:.5rem;margin:.25rem 0;box-sizing:border-box}}\
+        .error{{color:#b00020}}</style></head><body>{body}</body></html>"
     );
     (status, [(header::CACHE_CONTROL, "no-store")], Html(html)).into_response()
 }
@@ -364,11 +364,11 @@ fn login_form(params: &AuthorizeParams, error: Option<&str>) -> Response {
         status,
         &format!(
             "<h1>Mind</h1><p>Let Claude read and change your notes.</p>{error}\
-             <form method=\"post\" action=\"/oauth/authorize\">{hidden}\
-             <label for=\"password\">Server token</label>\
-             <input id=\"password\" name=\"password\" type=\"password\" \
-             autocomplete=\"current-password\" required autofocus>\
-             <button type=\"submit\">Allow</button></form>"
+            <form method=\"post\" action=\"/oauth/authorize\">{hidden}\
+            <label for=\"password\">Server token</label>\
+            <input id=\"password\" name=\"password\" type=\"password\" \
+            autocomplete=\"current-password\" required autofocus>\
+            <button type=\"submit\">Allow</button></form>"
         ),
     )
 }
