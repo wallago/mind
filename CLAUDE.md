@@ -15,6 +15,8 @@ MCP server exposing a Syncthing-shared notes folder: cheatsheets, things worth k
   source, with `#[from]` where it wraps a library error.
 - `tests/cli.rs`: runs the built binary the way a user would.
 - `src/server/`: axum server and its `/health` probe; routes are added in `routes()`.
+  `auth.rs` guards `/mcp` with the `token_file` bearer token, and `oauth.rs` adds
+  the stateless OAuth login claude.ai connectors use when `public_url` is set.
 - `src/mcp/`: MCP server on rmcp; a tool is a `#[tool]` method on `Server`. It must not glob-import the prelude: rmcp's macros expand to a bare two-argument `Result`.
 - `src/vault.rs`: the notes folder as plain file access, no MCP and no cache;
   every client path goes through `Vault::resolve`, which keeps it inside the vault.

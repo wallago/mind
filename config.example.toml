@@ -1,6 +1,10 @@
 [server]
 address = "0.0.0.0"
 port    = 3000
+# File holding the bearer token for /mcp. Unset: no auth, so keep the server on localhost.
+# token_file = "/run/secrets/mind-token"
+# Public HTTPS URL. With token_file, turns on the OAuth login claude.ai custom connectors use.
+# public_url = "https://mind.example.com"
 [mcp]
 # `Host` headers accepted on /mcp; add your public hostname to serve remote clients.
 allowed_hosts = ["localhost", "127.0.0.1", "::1"]
