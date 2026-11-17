@@ -891,7 +891,6 @@ dependencies = [
  "rmcp",
  "rstest",
  "serde",
- "serde_json",
  "thiserror",
  "tokio",
  "toml",
