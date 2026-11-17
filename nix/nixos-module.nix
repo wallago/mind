@@ -103,7 +103,9 @@ in
         message = "services.mind.settings.vault.root must be an absolute path.";
       }
       {
-        assertion = (cfg.settings.server.public_url or null) == null || cfg.tokenFile != null;
+        assertion =
+          (cfg.settings.server.public_url or cfg.settings.server.publicUrl or null) == null
+          || cfg.tokenFile != null;
         message = "services.mind.settings.server.public_url turns on OAuth, which needs services.mind.tokenFile.";
       }
     ];

@@ -5,6 +5,7 @@ use serde::Deserialize;
 #[serde(default, deny_unknown_fields)]
 pub(crate) struct McpConfig {
     /// `Host` headers accepted on `/mcp`; anything else gets a 403.
+    #[serde(alias = "allowedHosts")]
     pub(crate) allowed_hosts: Vec<String>,
 }
 
@@ -24,6 +25,13 @@ mod tests {
     #[test]
     fn test_deserializes_toml() -> Result<(), toml::de::Error> {
         let config = toml::from_str::<McpConfig>(r#"allowed_hosts = ["mcp.example.com"]"#)?;
+        assert_eq!(config.allowed_hosts, ["mcp.example.com"]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_accepts_camel_case() -> Result<(), toml::de::Error> {
+        let config = toml::from_str::<McpConfig>(r#"allowedHosts = ["mcp.example.com"]"#)?;
         assert_eq!(config.allowed_hosts, ["mcp.example.com"]);
         Ok(())
     }
