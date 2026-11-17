@@ -65,6 +65,41 @@ claude.ai opens a login page on the server: paste the server token once and clic
 - The static `Authorization: Bearer <token>` keeps working for Claude Code and scripts.
 - Only Claude's redirect URIs are accepted: the claude.ai callback and loopback URLs.
 
+## NixOS
+
+The flake builds the server (`nix build`) and ships a NixOS module:
+
+```nix
+{
+  inputs.mind.url = "github:wallago/mind";
+
+  outputs = { nixpkgs, mind, ... }: {
+    nixosConfigurations.host = nixpkgs.lib.nixosSystem {
+      modules = [
+        mind.nixosModules.default
+        {
+          services.mind = {
+            enable = true;
+            tokenFile = "/run/agenix/mind-token";
+            settings = {
+              vault.root = "/srv/notes";
+              server.public_url = "https://mind.example.com";
+              mcp.allowed_hosts = [ "localhost" "127.0.0.1" "::1" "mind.example.com" ];
+            };
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+`settings` is written to the config file as is, with the keys of `config.example.toml`;
+`server` defaults to `127.0.0.1:3000`. The service runs as the `mind` user, which needs
+write access to `vault.root` (add it to the Syncthing group). `tokenFile` stays out of the
+Nix store: systemd hands it to the service as a credential. `firewallInterfaces` opens the
+port on the interfaces listed, such as `wg0`.
+
 ## License
 
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
