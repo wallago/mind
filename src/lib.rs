@@ -19,6 +19,9 @@ pub mod server;
 /// MCP server layer.
 pub mod mcp;
 
+/// The notes folder.
+mod vault;
+
 use prelude::*;
 
 use crate::config::Config;
@@ -33,13 +36,14 @@ pub async fn run(args: &Args) -> Result<()> {
     better_panic::install();
     let config = Config::load(args.config.as_deref())?;
     tracing::debug!("Loaded {config:?}");
+    let vault = vault::Vault::open(&config.vault.root)?;
 
     // Runs until Ctrl-C or until any component stops.
     tokio::select! {
         result = tokio::signal::ctrl_c() => {
             tracing::info!("Interrupted: {:?}", result);
         },
-        result = server::start(&config) => {
+        result = server::start(&config, vault) => {
             tracing::info!("Server stopped: {:?}", result);
         },
     }

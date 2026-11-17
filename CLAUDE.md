@@ -16,6 +16,8 @@ MCP server exposing a Syncthing-shared notes folder: cheatsheets, things worth k
 - `tests/cli.rs`: runs the built binary the way a user would.
 - `src/server/`: axum server and its `/health` probe; routes are added in `routes()`.
 - `src/mcp/`: MCP server on rmcp; a tool is a `#[tool]` method on `Server`. It must not glob-import the prelude: rmcp's macros expand to a bare two-argument `Result`.
+- `src/vault.rs`: the notes folder as plain file access, no MCP and no cache;
+  every client path goes through `Vault::resolve`, which keeps it inside the vault.
 - `src/mcp/http.rs`: serves MCP over Streamable HTTP at `/mcp`, mounted by the server; `allowed_hosts` in the config guards the `Host` header.
 - `.github/workflows/ci.yml`: one job per `just ci` recipe, each run in the flake's CI shell, plus the Nix flake check and the commit-format check.
 

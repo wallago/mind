@@ -12,6 +12,9 @@ pub(crate) mod server;
 /// MCP settings.
 pub(crate) mod mcp;
 
+/// Notes folder settings.
+pub(crate) mod vault;
+
 /// Configuration loaded from `config.toml`.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -21,6 +24,8 @@ pub(crate) struct Config {
     pub(crate) server: server::ServerConfig,
     /// MCP config.
     pub(crate) mcp: mcp::McpConfig,
+    /// Vault config.
+    pub(crate) vault: vault::VaultConfig,
 }
 
 impl Config {
