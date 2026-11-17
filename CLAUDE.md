@@ -5,6 +5,9 @@ MCP server exposing a Syncthing-shared notes folder: cheatsheets, things worth k
 ## Layout
 
 - `flake.nix`: dev shell (`nix develop`) and the lean CI shell (`nix develop .#ci`). Tools the checks run go in `ciTools`, editor-only ones in `devTools`.
+- `nix/`: `package.nix` builds the binary with naersk (`packages.default`,
+  `packages.debug` for `nix flake check`); `nixos-module.nix` is
+  `nixosModules.default`, the `services.mind` systemd service.
 - `src/main.rs`: parses `Args`, sets up tracing, calls `run`. Keep it thin.
 - `src/lib.rs`: `run` builds every component from `Config`, then waits on all
   of them in one `tokio::select!` until Ctrl-C or the first one stops. A new

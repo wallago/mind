@@ -7,8 +7,9 @@
   };
 
   outputs =
-    inputs:
+    { self, ... }@inputs:
     {
+      nixosModules.default = import ./nix/nixos-module.nix self;
     }
     # ── Then merge the per-system outputs onto it ──
     //
@@ -36,6 +37,19 @@
               ];
             };
 
+            naersk' = pkgs.callPackage inputs.naersk {
+              cargo = rust;
+              rustc = rust;
+            };
+
+            # ── Build helper ──────────────────────────────────────────
+            buildApp =
+              release:
+              pkgs.callPackage ./nix/package.nix {
+                inherit naersk' release;
+                src = ./.;
+              };
+
             # ── Tooling shared ────────────────────────────────────────
             ciTools = with pkgs; [
               just
@@ -60,6 +74,15 @@
             ];
           in
           {
+            # ── Packages (nix build) ─────────────────────────────────
+            packages = {
+              default = buildApp true;
+              debug = buildApp false;
+            };
+
+            # ── Checks (nix flake check) ─────────────────────────────
+            checks.default = self.packages.${system}.debug;
+
             # ── Dev Shell (nix develop) ──────────────────────────────
             devShells.default =
               let
