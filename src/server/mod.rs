@@ -2,7 +2,7 @@
 
 use axum::{Router, http::StatusCode, routing::get, serve};
 
-use crate::{config::Config, prelude::*};
+use crate::{config::Config, prelude::*, vault::Vault};
 
 /// Liveness probe: answers as long as the server is up.
 async fn health() -> StatusCode {
@@ -16,11 +16,11 @@ fn routes() -> Router {
 }
 
 /// Start web services.
-pub(super) async fn start(config: &Config) -> Result<()> {
+pub(super) async fn start(config: &Config, vault: Vault) -> Result<()> {
     let (address, port) = (&config.server.address, config.server.port);
     let listener = tokio::net::TcpListener::bind(format!("{address}:{port}")).await?;
     tracing::info!("Server running");
     let routes = routes();
-    let routes = routes.nest_service("/mcp", crate::mcp::http::service(&config.mcp));
+    let routes = routes.nest_service("/mcp", crate::mcp::http::service(&config.mcp, vault));
     Ok(serve(listener, routes).await?)
 }

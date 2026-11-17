@@ -11,6 +11,17 @@ pub enum Error {
     /// Error that may occur while loading the application config file.
     #[error("Config file error: `{0}`")]
     Config(String),
+    /// The vault folder can't be opened.
+    #[error("Vault error: `{0}`")]
+    Vault(String),
+    /// A path from a client is not a Markdown note inside the vault.
+    #[error(
+        "`{0}` is not a note in the vault: give a relative path to a .md file, like `rust/cheatsheet.md`"
+    )]
+    BadNote(String),
+    /// The note doesn't exist.
+    #[error("no note at `{0}`: see `list_notes`")]
+    NoNote(String),
 }
 
 /// Type alias for the standard [`Result`] type.
