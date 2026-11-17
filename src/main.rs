@@ -1,0 +1,30 @@
+//! Command line entry point for `mind`.
+
+use std::process::exit;
+
+// One crate import, so rustfmt's ordering doesn't depend on the crate name.
+use mind::{prelude::*, version};
+
+/// Runs the crate and maps the outcome to a process exit code.
+#[tokio::main]
+async fn main() {
+    let args = <Args as clap::Parser>::parse();
+    let under_journal = std::env::var_os("JOURNAL_STREAM").is_some();
+    let fmt = tracing_subscriber::fmt()
+        .with_max_level(args.log_level())
+        .with_writer(std::io::stderr);
+    if under_journal {
+        fmt.without_time().with_ansi(false).init();
+    } else {
+        fmt.init();
+    }
+
+    tracing::info!("welcome into {}", version!());
+    match mind::run(&args).await {
+        Ok(()) => exit(0),
+        Err(e) => {
+            eprintln!("{e}");
+            exit(1)
+        }
+    }
+}

@@ -1,0 +1,6 @@
+[server]
+address = "0.0.0.0"
+port    = 3000
+[mcp]
+# `Host` headers accepted on /mcp; add your public hostname to serve remote clients.
+allowed_hosts = ["localhost", "127.0.0.1", "::1"]
