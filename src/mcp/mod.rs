@@ -25,6 +25,29 @@ pub(crate) struct NoteArgs {
     note: String,
 }
 
+/// Arguments of `add_note`.
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(crate = "rmcp::serde")]
+pub(crate) struct AddArgs {
+    /// Path of the new note, relative to the vault, like `rust/cheatsheet.md`.
+    /// Missing folders are created.
+    note: String,
+    /// The note's Markdown content.
+    content: String,
+}
+
+/// Arguments of `update_note`.
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(crate = "rmcp::serde")]
+pub(crate) struct UpdateArgs {
+    /// Path of the note, relative to the vault, like `rust/cheatsheet.md`.
+    note: String,
+    /// Text to replace, copied exactly from the note, found there exactly once.
+    old_text: String,
+    /// Text to put in its place; empty deletes `old_text`.
+    new_text: String,
+}
+
 /// MCP server: each `#[tool]` method below is a tool clients can call.
 #[derive(Debug, Clone)]
 pub(crate) struct Server {
@@ -66,6 +89,42 @@ impl Server {
         self.vault
             .read(&args.note)
             .map_err(|error| error.to_string())
+    }
+
+    /// Adds a note.
+    #[tool(
+        description = "Create a new Markdown note. Fails if the note already exists: then use `update_note`.",
+        annotations(destructive_hint = false, idempotent_hint = false)
+    )]
+    async fn add_note(&self, Parameters(args): Parameters<AddArgs>) -> Answer {
+        self.vault
+            .create(&args.note, &args.content)
+            .map_err(|error| error.to_string())?;
+        Ok(format!("Created `{}`.", args.note))
+    }
+
+    /// Changes a note.
+    #[tool(
+        description = "Change a note: replace `old_text`, copied exactly from the note and found there once, with `new_text`. Read the note first. To rewrite it all, pass its whole content as `old_text`.",
+        annotations(destructive_hint = true, idempotent_hint = false)
+    )]
+    async fn update_note(&self, Parameters(args): Parameters<UpdateArgs>) -> Answer {
+        self.vault
+            .edit(&args.note, &args.old_text, &args.new_text)
+            .map_err(|error| error.to_string())?;
+        Ok(format!("Updated `{}`.", args.note))
+    }
+
+    /// Deletes a note.
+    #[tool(
+        description = "Delete a note. It can't be undone from here: ask the user first.",
+        annotations(destructive_hint = true, idempotent_hint = true)
+    )]
+    async fn delete_note(&self, Parameters(args): Parameters<NoteArgs>) -> Answer {
+        self.vault
+            .delete(&args.note)
+            .map_err(|error| error.to_string())?;
+        Ok(format!("Deleted `{}`.", args.note))
     }
 }
 
@@ -139,6 +198,56 @@ mod tests {
                 .as_ref()
                 .is_err_and(|error| error.contains("relative path")),
             "{answer:?}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn add_update_delete_round_trip() -> Result<()> {
+        let server = server("write")?;
+        let add = |note: &str, content: &str| {
+            Parameters(AddArgs {
+                note: note.to_owned(),
+                content: content.to_owned(),
+            })
+        };
+        let update = |old: &str, new: &str| {
+            Parameters(UpdateArgs {
+                note: String::from("ideas.md"),
+                old_text: old.to_owned(),
+                new_text: new.to_owned(),
+            })
+        };
+
+        assert_eq!(
+            server.add_note(add("ideas.md", "- a\n")).await,
+            Ok(String::from("Created `ideas.md`."))
+        );
+        let again = server.add_note(add("ideas.md", "")).await;
+        assert!(
+            again
+                .as_ref()
+                .is_err_and(|error| error.contains("update_note")),
+            "{again:?}"
+        );
+
+        assert!(server.update_note(update("- a", "- b")).await.is_ok());
+        assert_eq!(
+            server.read_note(note("ideas.md")).await,
+            Ok(String::from("- b\n"))
+        );
+        let missing = server.update_note(update("- z", "- y")).await;
+        assert!(
+            missing
+                .as_ref()
+                .is_err_and(|error| error.contains("not in")),
+            "{missing:?}"
+        );
+
+        assert!(server.delete_note(note("ideas.md")).await.is_ok());
+        assert_eq!(
+            server.list_notes().await,
+            Ok(String::from("rust/cheatsheet.md"))
         );
         Ok(())
     }
