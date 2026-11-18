@@ -30,6 +30,18 @@ cargo run -- --help
 
 Settings are read from a TOML file; `config.example.toml` lists them.
 
+### Tools
+
+- `list_notes`: every `.md` note in the vault, hidden folders skipped.
+- `read_note`: a note's content.
+- `add_note`: a new note, with missing folders created. It never overwrites.
+- `update_note`: replaces one exact, unique piece of text in a note.
+- `delete_note`: removes a note.
+
+Every path is relative to `[vault] root`. Absolute paths, `..` and symlinks that lead
+out of the vault are refused. Nothing is cached, so changes Syncthing makes are seen
+right away. Keep the vault versioned (Syncthing file versioning or git) as the undo button.
+
 ### Bearer token
 
 Set `[server] token_file` to a file holding a token (agenix, sops...).

@@ -6,6 +6,7 @@
 
 use std::{
     fs,
+    io::{self, Write as _},
     path::{Component, Path, PathBuf},
 };
 
@@ -82,6 +83,78 @@ impl Vault {
             return Err(Error::NoNote(note.to_owned()));
         }
         Ok(fs::read_to_string(path)?)
+    }
+
+    /// Creates the note at `note` with `content`, and its folders if needed.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::BadNote`] if `note` is not a note path in the vault,
+    /// [`Error::NoteExists`] if something is already there, [`Error::Io`] if
+    /// it can't be written.
+    pub(crate) fn create(&self, note: &str, content: &str) -> Result<()> {
+        let path = self.resolve(note)?;
+        if path.exists() {
+            return Err(Error::NoteExists(note.to_owned()));
+        }
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        // `create_new`: never overwrite a note that appeared in the meantime.
+        let mut file = match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(file) => file,
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                return Err(Error::NoteExists(note.to_owned()));
+            }
+            Err(error) => return Err(error.into()),
+        };
+        file.write_all(content.as_bytes())?;
+        Ok(())
+    }
+
+    /// Replaces `old`, which must be in the note exactly once, with `new`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::BadNote`] or [`Error::NoNote`] as for [`Vault::read`],
+    /// [`Error::TextNotFound`] or [`Error::TextNotUnique`] unless `old` is in
+    /// the note exactly once, [`Error::Io`] if it can't be written.
+    pub(crate) fn edit(&self, note: &str, old: &str, new: &str) -> Result<()> {
+        let content = self.read(note)?;
+        let count = if old.is_empty() {
+            0
+        } else {
+            content.matches(old).count()
+        };
+        match count {
+            0 => Err(Error::TextNotFound(note.to_owned())),
+            1 => Ok(fs::write(
+                self.resolve(note)?,
+                content.replacen(old, new, 1),
+            )?),
+            count => Err(Error::TextNotUnique {
+                note: note.to_owned(),
+                count,
+            }),
+        }
+    }
+
+    /// Deletes the note at `note`. Its folder stays, even if empty.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::BadNote`] or [`Error::NoNote`] as for [`Vault::read`],
+    /// [`Error::Io`] if it can't be removed.
+    pub(crate) fn delete(&self, note: &str) -> Result<()> {
+        let path = self.resolve(note)?;
+        if !path.is_file() {
+            return Err(Error::NoNote(note.to_owned()));
+        }
+        Ok(fs::remove_file(path)?)
     }
 
     /// Turns a client's relative note path into a path inside the vault.
@@ -221,6 +294,53 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn create_writes_a_new_note_and_its_folders() -> Result<()> {
+        let vault = vault("create", &[("advice.md", "old")])?;
+        vault.create("rust/async/tokio.md", "# Tokio\n")?;
+        assert_eq!(vault.read("rust/async/tokio.md")?, "# Tokio\n");
+        let result = vault.create("advice.md", "new");
+        assert!(matches!(&result, Err(Error::NoteExists(_))), "{result:?}");
+        assert_eq!(vault.read("advice.md")?, "old");
+        let result = vault.create("../escape.md", "");
+        assert!(matches!(&result, Err(Error::BadNote(_))), "{result:?}");
+        Ok(())
+    }
+
+    #[test]
+    fn edit_replaces_text_found_once() -> Result<()> {
+        let vault = vault("edit", &[("note.md", "# Title\n- one\n- two\n- two\n")])?;
+        vault.edit("note.md", "- one", "- first")?;
+        assert_eq!(vault.read("note.md")?, "# Title\n- first\n- two\n- two\n");
+
+        let result = vault.edit("note.md", "- two", "- second");
+        assert!(
+            matches!(&result, Err(Error::TextNotUnique { count: 2, .. })),
+            "{result:?}"
+        );
+        for old in ["- three", ""] {
+            let result = vault.edit("note.md", old, "x");
+            assert!(matches!(&result, Err(Error::TextNotFound(_))), "{result:?}");
+        }
+        let result = vault.edit("missing.md", "a", "b");
+        assert!(matches!(&result, Err(Error::NoNote(_))), "{result:?}");
+        // Nothing changed after the failures.
+        assert_eq!(vault.read("note.md")?, "# Title\n- first\n- two\n- two\n");
+        Ok(())
+    }
+
+    #[test]
+    fn delete_removes_only_notes() -> Result<()> {
+        let vault = vault("delete", &[("rust/a.md", ""), ("rust/b.md", "")])?;
+        vault.delete("rust/a.md")?;
+        assert_eq!(vault.list()?, ["rust/b.md"]);
+        let result = vault.delete("rust/a.md");
+        assert!(matches!(&result, Err(Error::NoNote(_))), "{result:?}");
+        let result = vault.delete("rust");
+        assert!(matches!(&result, Err(Error::BadNote(_))), "{result:?}");
+        Ok(())
+    }
+
     #[cfg(unix)]
     #[test]
     fn symlinks_out_of_the_vault_are_refused() -> Result<()> {
@@ -229,6 +349,11 @@ mod tests {
         std::os::unix::fs::symlink(&outside.root, vault.root.join("link"))?;
         let result = vault.read("link/secret.md");
         assert!(matches!(&result, Err(Error::BadNote(_))), "{result:?}");
+        let result = vault.create("link/new.md", "");
+        assert!(matches!(&result, Err(Error::BadNote(_))), "{result:?}");
+        let result = vault.delete("link/secret.md");
+        assert!(matches!(&result, Err(Error::BadNote(_))), "{result:?}");
+        assert_eq!(outside.read("secret.md")?, "secret");
         Ok(())
     }
 }

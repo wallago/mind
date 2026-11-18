@@ -22,6 +22,22 @@ pub enum Error {
     /// The note doesn't exist.
     #[error("no note at `{0}`: see `list_notes`")]
     NoNote(String),
+    /// A note already exists where a new one should go.
+    #[error("`{0}` already exists: read it, then use `update_note`")]
+    NoteExists(String),
+    /// The text to replace is not in the note.
+    #[error("the text to replace is not in `{0}`: read the note again and copy it exactly")]
+    TextNotFound(String),
+    /// The text to replace is in the note more than once.
+    #[error(
+        "the text to replace is in `{note}` {count} times: add surrounding lines so it is unique"
+    )]
+    TextNotUnique {
+        /// The note.
+        note: String,
+        /// How many times the text is there.
+        count: usize,
+    },
 }
 
 /// Type alias for the standard [`Result`] type.
