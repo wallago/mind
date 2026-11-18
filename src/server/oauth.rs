@@ -24,7 +24,7 @@ use axum::{
     routing::{get, post},
 };
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD as B64};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -69,7 +69,7 @@ struct Claims {
 /// An HMAC-SHA256 keyed with `key`.
 fn hmac(key: &[u8]) -> Hmac<Sha256> {
     // HMAC takes keys of any length, so this never fails.
-    <Hmac<Sha256> as Mac>::new_from_slice(key).unwrap_or_else(|_| unreachable!())
+    <Hmac<Sha256> as KeyInit>::new_from_slice(key).unwrap_or_else(|_| unreachable!())
 }
 
 /// Seconds since the Unix epoch.
